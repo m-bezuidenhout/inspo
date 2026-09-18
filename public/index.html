@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Design Inspiration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <div>
+            <h1>Inspiration</h1>
+            <p class="brand-sub">Your design library</p>
+          </div>
+        </div>
+
+        <div class="folder-head">
+          <span>Folders</span>
+          <button class="icon-btn" id="new-folder-btn" title="New folder" aria-label="New folder">+</button>
+        </div>
+
+        <form class="new-folder" id="new-folder-form" hidden>
+          <input
+            type="text"
+            id="new-folder-input"
+            placeholder="Folder name"
+            maxlength="60"
+            autocomplete="off"
+          />
+          <div class="new-folder-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Create</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="cancel-folder-btn">Cancel</button>
+          </div>
+        </form>
+
+        <nav class="folder-list" id="folder-list"></nav>
+
+        <div class="sidebar-foot">
+          <p class="path-label">Saved on your PC at</p>
+          <p class="path-value" id="library-path" title="">…</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="main-head">
+          <div>
+            <h2 id="current-folder">Choose a folder</h2>
+            <p class="count" id="image-count"></p>
+          </div>
+          <div class="head-actions">
+            <input type="file" id="file-input" accept="image/*" multiple hidden />
+            <button class="btn btn-primary" id="upload-btn" disabled>Add images</button>
+          </div>
+        </header>
+
+        <section class="content" id="content">
+          <div class="empty" id="empty-state">
+            <div class="empty-art"></div>
+            <h3>Nothing here yet</h3>
+            <p>Create a folder on the left to get started.</p>
+          </div>
+          <div class="grid" id="grid" hidden></div>
+        </section>
+
+        <div class="dropzone-overlay" id="dropzone-overlay" hidden>
+          <div class="dropzone-card">
+            <div class="dropzone-icon"></div>
+            <p>Drop images to add them</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+      <img id="lightbox-img" alt="" />
+      <div class="lightbox-bar">
+        <span id="lightbox-name"></span>
+        <button class="btn btn-danger btn-sm" id="lightbox-delete">Delete</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

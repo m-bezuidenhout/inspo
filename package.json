@@ -1,0 +1,14 @@
+{
+  "name": "design-inspiration",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A personal library for storing design inspiration images in real folders on disk.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.0.2"
+  }
+}

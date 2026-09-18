@@ -1,0 +1,7 @@
+node_modules/
+
+# Your saved inspiration images ARE tracked in git, so they back up to GitHub
+# and follow you onto other machines. Only OS junk is excluded here.
+Thumbs.db
+desktop.ini
+.DS_Store
