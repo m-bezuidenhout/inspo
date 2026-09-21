@@ -50,6 +50,7 @@ const toastEl = el('toast');
 const signin = el('signin');
 const signinForm = el('signin-form');
 const signinEmail = el('signin-email');
+const signinPassword = el('signin-password');
 const signinBtn = el('signin-btn');
 const signinNote = el('signin-note');
 const account = el('account');
@@ -1358,27 +1359,55 @@ peopleModal.onclick = (event) => {
   if (event.target === peopleModal) peopleModal.hidden = true;
 };
 
+/**
+ * One form for both signing in and signing up.
+ *
+ * Asking people whether they already have an account is a question they should
+ * not have to answer. We try to sign them in; if no such account exists, the
+ * same details create one. The only case that needs explaining is an email
+ * that exists with a different password, and that gets said plainly.
+ *
+ * Passwords rather than emailed links because the hosted email service allows
+ * only a couple of messages an hour, which locked people out in practice.
+ */
 signinForm.onsubmit = async (event) => {
   event.preventDefault();
   const email = signinEmail.value.trim();
-  if (!email || !auth) return;
+  const password = signinPassword.value;
+  if (!email || !password || !auth) return;
 
   signinBtn.disabled = true;
-  signinBtn.textContent = 'Sending…';
+  signinBtn.textContent = 'Just a moment…';
+  signinNote.classList.remove('error', 'sent');
+
   try {
-    const { error } = await auth.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) throw new Error(error.message);
-    signinNote.textContent = `Check ${email} for a sign-in link. You can close this tab.`;
-    signinNote.classList.add('sent');
+    const attempt = await auth.auth.signInWithPassword({ email, password });
+    if (!attempt.error) return; // onAuthStateChange takes it from here.
+
+    const noSuchAccount = /invalid login credentials/i.test(attempt.error.message);
+    if (!noSuchAccount) throw new Error(attempt.error.message);
+
+    // No account with that email - so make one.
+    const created = await auth.auth.signUp({ email, password });
+    if (created.error) {
+      if (/already registered/i.test(created.error.message)) {
+        throw new Error('That email already has an account, but the password is wrong.');
+      }
+      throw new Error(created.error.message);
+    }
+
+    // With email confirmation switched off, signUp returns a session and the
+    // auth listener takes over. With it on, there is nothing to do but wait.
+    if (!created.data.session) {
+      signinNote.textContent = `Account created. Check ${email} to confirm it, then sign in.`;
+      signinNote.classList.add('sent');
+    }
   } catch (err) {
     signinNote.textContent = err.message;
     signinNote.classList.add('error');
   } finally {
     signinBtn.disabled = false;
-    signinBtn.textContent = 'Email me a link';
+    signinBtn.textContent = 'Continue';
   }
 };
 

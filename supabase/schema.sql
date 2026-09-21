@@ -203,6 +203,20 @@ alter publication supabase_realtime add table public.images;
 update public.images set kind      = 'branding' where kind      = 'social';
 update public.images set auto_kind = 'branding' where auto_kind = 'social';
 
+-- --------------------------------------------------------------- dashboard
+--
+-- Two settings that cannot be made from SQL, both under Authentication:
+--
+--   Providers -> Email -> "Confirm email"  ->  OFF
+--       The hosted email service allows only a couple of messages an hour,
+--       which locks people out. With confirmation off, signing up is instant
+--       and no email is ever sent. Access is controlled by the invites table
+--       below, not by proving ownership of an address.
+--
+--   Providers -> Email -> sign-ups         ->  ON
+--       Someone who signs up without an invite lands in no library and sees
+--       nothing, so this is safe.
+
 -- --------------------------------------------------------------------- notes
 --
 -- The first person to sign in creates the library and becomes its owner.

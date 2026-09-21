@@ -164,10 +164,17 @@ The **anon key** is safe to publish — the security policies are what protect y
 The **service role key** is not: it bypasses those policies completely, so it stays on
 the server and never goes near a browser or a commit. `.env` is git-ignored.
 
-**3. Invite people.** Two steps, because they are two different things:
+**3. Set up sign-in.** Under **Authentication -> Providers -> Email**:
 
-- **Authentication -> Users -> Invite** gives them an *account*.
-- The **People** button in the app's sidebar lets them into *your library*.
+- **sign-ups** -> **on**
+- **Confirm email** -> **off**
+
+People sign in with an email and a password; entering an email nobody has used
+creates the account there and then. Confirmation is off because the hosted email
+service allows only a couple of messages an hour, which locks people out. It is
+safe here: the invite list below is what grants access, not the address itself.
+
+**Invite people** with the **People** button in the app's sidebar.
 
 The first person to sign in creates the library and becomes its owner. Everyone after
 that needs an invite, so **turn off public sign-ups** under **Authentication ->
