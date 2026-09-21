@@ -117,7 +117,8 @@ class LocalBackend {
     const added = [];
     for (const file of files) {
       const name = this.freeName(storageName(file.originalname));
-      await fsp.writeFile(path.join(this.dir, name), file.buffer);
+      // Read one at a time: the whole batch never sits in memory together.
+      await fsp.writeFile(path.join(this.dir, name), await file.read());
 
       // detect() already returns the stored shape (w/h), so the batch choices
       // are folded straight into it rather than through a second shape.

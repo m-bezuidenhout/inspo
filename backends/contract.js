@@ -9,7 +9,10 @@
  * A backend implements:
  *
  *   list()                        -> [record]      newest first
- *   add(files, { tags, kind })    -> [addedRecord] files: [{ originalname, buffer }]
+ *   add(files, { tags, kind })    -> [addedRecord]
+ *       files: [{ originalname, mimetype, size, read() -> Promise<Buffer> }]
+ *       Bytes arrive when asked for, one file at a time, so a big drop never
+ *       sits in memory all at once.
  *   update(id, changes)           -> record        changes: { kind?, tags?, width?, height? }
  *   remove(id)                    -> true
  *

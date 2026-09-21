@@ -136,12 +136,15 @@ class SupabaseBackend {
       // be written against the path with the same test as the table.
       const storagePath = `${this.libraryId}/${Date.now()}-${name}`;
 
+      // Read one at a time: the whole batch never sits in memory together.
+      const bytes = await file.read();
+
       const upload = await this.db.storage
         .from(this.bucket)
-        .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
+        .upload(storagePath, bytes, { contentType: file.mimetype, upsert: false });
       if (upload.error) throw new Error(`Could not store ${name}: ${upload.error.message}`);
 
-      const entry = applyBatch(describe(name, file.buffer), batch);
+      const entry = applyBatch(describe(name, bytes), batch);
 
       const { data, error } = await this.db
         .from(TABLE)
@@ -150,7 +153,7 @@ class SupabaseBackend {
           uploaded_by: this.userId,
           name,
           storage_path: storagePath,
-          size_bytes: file.buffer.length,
+          size_bytes: bytes.length,
           width: entry.width,
           height: entry.height,
           kind: entry.kind,

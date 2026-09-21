@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const fsp = require('fs/promises');
+const os = require('os');
 const path = require('path');
 
 const config = require('./config');
@@ -76,15 +78,41 @@ function requireOwner(req, res, next) {
 
 // --- Uploads ---------------------------------------------------------------
 
-// Memory storage, because a backend may need the bytes rather than a path -
-// the hosted one streams them to Supabase and never touches a disk.
+/**
+ * Uploads are staged on disk, not held in memory.
+ *
+ * Buffering the whole request would mean 40 files at 25 MB each sitting in RAM
+ * at once - a gigabyte, on a host that may only have half that. Staging them
+ * and reading one at a time keeps the peak at a single file no matter how many
+ * were dropped. The staging directory is temporary and wiped after each
+ * request, so nothing accumulates.
+ */
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({ destination: os.tmpdir() }),
   limits: { fileSize: 25 * 1024 * 1024, files: 40 },
   fileFilter(req, file, cb) {
     cb(null, isImage(file.originalname) || file.mimetype.startsWith('image/'));
   },
 });
+
+/**
+ * Hands the backend the same shape it always had, except the bytes arrive when
+ * asked for rather than all up front. Whoever calls this must call the returned
+ * cleanup, or staged files pile up in the temporary directory.
+ */
+function stagedFiles(files) {
+  return {
+    files: files.map((file) => ({
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      read: () => fsp.readFile(file.path),
+    })),
+    async cleanUp() {
+      await Promise.all(files.map((f) => fsp.unlink(f.path).catch(() => {})));
+    },
+  };
+}
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -209,9 +237,15 @@ app.post('/api/images', requireUser, upload.array('images', 40), async (req, res
     // A type chosen on the dialog overrides the suggestion for the whole batch.
     const kind = KIND_IDS.has(req.body.kind) ? req.body.kind : null;
 
-    const backend = backendFor(req);
-    const added = await backend.add(files, { tags, kind });
-    res.status(201).json({ added: added.length, images: added });
+    const staged = stagedFiles(files);
+    try {
+      const backend = backendFor(req);
+      const added = await backend.add(staged.files, { tags, kind });
+      res.status(201).json({ added: added.length, images: added });
+    } finally {
+      // Even if a backend threw halfway, nothing is left behind on disk.
+      await staged.cleanUp();
+    }
   } catch (err) {
     next(err);
   }
