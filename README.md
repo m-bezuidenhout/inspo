@@ -174,16 +174,21 @@ that needs an invite, so **turn off public sign-ups** under **Authentication ->
 Providers** — otherwise a stranger could create an account (they would see nothing, but
 there is no reason to allow it).
 
-**4. Deploy.** There is a `Dockerfile` and a `fly.toml`:
+**4. Deploy.** [`render.yaml`](render.yaml) sets this up on Render's free plan, which
+needs no card: **render.com → New → Blueprint →** pick this repo. Render reads the file
+and prompts you for the three secrets.
 
-```bash
-fly launch --no-deploy
-fly secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...
-fly deploy
-```
+The free plan sleeps after ~15 minutes idle, so the first visit after a quiet spell takes
+30–60 seconds to wake. Nothing is lost while it sleeps — the images and tags are in
+Supabase and this server keeps nothing of its own.
 
-Railway and Render work the same way: point them at the repo, set those three variables
-in their dashboard. Secrets go in the platform's own secret store, never in a file.
+There is also a `Dockerfile` and a `fly.toml` if you'd rather use Fly.io or Railway. Any
+of them work the same way: point at the repo, set those three variables. Secrets go in
+the platform's own store, never in a file.
+
+**Whichever you use**, once it gives you a URL, add it in Supabase under
+**Authentication → URL Configuration** as both the **Site URL** and a **Redirect URL**.
+Miss this and sign-in emails are sent but their links go nowhere, with no error shown.
 
 ### Things worth knowing before you rely on it
 

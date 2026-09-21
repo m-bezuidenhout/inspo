@@ -1,0 +1,29 @@
+# Render deployment. Free, and no card needed.
+#
+# render.com -> New -> Blueprint -> pick this repo. Render reads this file and
+# sets everything up, then asks you for the three secrets below.
+#
+# The free plan sleeps after about 15 minutes of no visitors, so the first
+# load after a quiet spell takes 30-60 seconds while it wakes. Every load
+# after that is normal. Nothing is lost while it sleeps: the images and tags
+# live in Supabase, and this server keeps nothing of its own.
+
+services:
+  - type: web
+    name: design-inspiration
+    runtime: node
+    plan: free
+    # Matches the lockfile exactly rather than resolving versions afresh.
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      # "sync: false" means Render prompts you for the value and keeps it
+      # secret, rather than storing it in this file. Never put keys in here -
+      # this file is committed to GitHub.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
