@@ -185,6 +185,15 @@ create policy "members delete files" on storage.objects for delete
   using (bucket_id = 'inspiration'
          and public.is_member(((storage.foldername(name))[1])::uuid));
 
+-- ---------------------------------------------------------------- realtime
+--
+-- Lets the app receive changes as they happen, so an image somebody else adds
+-- appears in everyone's grid without anyone reloading. Row-level security still
+-- applies to the stream: you are only sent changes to rows you could read
+-- anyway, which is your own library's.
+
+alter publication supabase_realtime add table public.images;
+
 -- ------------------------------------------------------------- housekeeping
 
 -- "Social" and "Branding" used to be separate types and are now one. This moves

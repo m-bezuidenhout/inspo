@@ -144,6 +144,10 @@ app.get('/api/config', (req, res) => {
     role: req.membership ? req.membership.role : null,
     // Signed in but in no library: the page shows "ask to be invited".
     member: Boolean(req.membership),
+    // So the page can listen for changes to this library and nothing else.
+    // Not a secret: it identifies a library you are already a member of, and
+    // row-level security is what decides what you may actually read.
+    libraryId: req.membership ? req.membership.libraryId : null,
   });
 });
 

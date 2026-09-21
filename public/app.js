@@ -939,6 +939,82 @@ window.addEventListener('resize', () => {
   if (!lightbox.hidden) applyZoom();
 });
 
+// ------------------------------------------------------- keeping in step
+
+/**
+ * A shared library changes under your feet: somebody else adds an image, or
+ * retags one. Two things keep the page honest about that.
+ *
+ *   1. Coming back to the tab refetches. Cheap, needs no setup, and covers
+ *      the ordinary case where you were looking at something else.
+ *   2. A live subscription, so a change appears within a second while you are
+ *      actually watching.
+ *
+ * Both funnel into one debounced refresh: adding ten images fires ten events,
+ * and that should still be a single reload.
+ */
+let refreshTimer = null;
+let refreshing = false;
+
+function scheduleRefresh(delay = 400) {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => refreshNow(), delay);
+}
+
+async function refreshNow() {
+  // Never pull the rug while someone is choosing what to upload.
+  if (!uploadModal.hidden || refreshing) return;
+  refreshing = true;
+
+  // The full-size view holds one of the objects the list is about to replace,
+  // so it has to be pointed at the new one - or closed if it has gone.
+  const openId = lightboxImage ? lightboxImage.id : null;
+  try {
+    await loadImages();
+    if (openId) {
+      const still = images.find((i) => i.id === openId);
+      if (still) {
+        lightboxImage = still;
+        renderLightbox();
+      } else {
+        closeLightbox();
+        toast("That image was removed by someone else.");
+      }
+    }
+  } catch {
+    // A failed background refresh is not worth interrupting anyone over.
+  } finally {
+    refreshing = false;
+  }
+}
+
+// Coming back to the tab is the cheap half, and works on every backend.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) scheduleRefresh(150);
+});
+window.addEventListener("focus", () => scheduleRefresh(150));
+
+/**
+ * The live half. Only the hosted backend has anything to subscribe to, and
+ * only for the library you belong to. If it cannot connect, the page carries
+ * on working exactly as before - refreshing on focus instead.
+ */
+function watchForChanges() {
+  if (!auth || !serverConfig.libraryId) return;
+  auth
+    .channel(`library-${serverConfig.libraryId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "images",
+        filter: `library_id=eq.${serverConfig.libraryId}`,
+      },
+      () => scheduleRefresh()
+    )
+    .subscribe();
+}
 // ---------------------------------------------------------------- lightbox
 
 function openLightbox(image) {
@@ -1333,6 +1409,7 @@ async function boot() {
     pathLabel.textContent = 'Saved in';
     // Only an owner can see or change who else is here.
     peopleBtn.hidden = serverConfig.role !== 'owner';
+    watchForChanges();
   }
   await loadImages();
 }
