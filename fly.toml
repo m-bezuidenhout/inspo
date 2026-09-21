@@ -1,0 +1,31 @@
+# Fly.io deployment. Rename the app, then:
+#
+#   fly launch --no-deploy         (once, to create the app)
+#   fly secrets set SUPABASE_URL=... SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=...
+#   fly deploy
+#
+# Secrets are set with `fly secrets`, never in this file - it is committed.
+
+app = "design-inspiration"
+primary_region = "lhr"
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # A personal library has no traffic most of the time. Letting it sleep costs
+  # a second on the first request and very little money the rest of the day.
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"

@@ -1,18 +1,27 @@
 :root {
-  --bg: #f6f7f9;
+  /* Palette: teal #2EC4B6, blue #4361EE, purple #7209B7, pale teal #CBF3F0.
+     The palette's off-white ground is deliberately not used - the page sits on
+     a neutral grey instead, so nothing competes with the images. */
+  --brand-teal: #2ec4b6;
+  --brand-blue: #4361ee;
+  --brand-purple: #7209b7;
+  --brand-tint: #cbf3f0;
+
+  /* Neutral greys, so the brand colours are the only colour on the page. */
+  --bg: #f4f5f7;
   --bg-raised: #ffffff;
-  --bg-hover: #eef0f4;
-  --border: #e2e5ec;
-  --border-strong: #c8cdd8;
-  --text: #191c24;
-  --text-dim: #5b6271;
-  --text-faint: #8b91a0;
-  --accent: #5b4ce0;
-  --accent-hover: #4c3ed1;
-  --accent-soft: rgba(91, 76, 224, 0.1);
+  --bg-hover: #eaeced;
+  --border: #e3e4e8;
+  --border-strong: #c6c8d0;
+  --text: #1b1c22;
+  --text-dim: #585b66;
+  --text-faint: #888b96;
+  --accent: var(--brand-blue);
+  --accent-hover: #3550d8;
+  --accent-soft: rgba(67, 97, 238, 0.1);
   --danger: #d33a40;
-  --shadow-card: 0 1px 2px rgba(20, 24, 38, 0.05);
-  --shadow-card-hover: 0 6px 18px rgba(20, 24, 38, 0.1);
+  --shadow-card: 0 1px 2px rgba(20, 22, 30, 0.05);
+  --shadow-card-hover: 0 6px 18px rgba(20, 22, 30, 0.1);
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -69,7 +78,7 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), #4ac5e8);
+  background: linear-gradient(135deg, var(--brand-purple), var(--brand-teal));
   flex-shrink: 0;
 }
 
@@ -86,7 +95,7 @@ body {
   color: var(--text-faint);
 }
 
-.folder-head {
+.nav-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -118,32 +127,7 @@ body {
   color: var(--text);
 }
 
-.new-folder {
-  padding: 4px 6px 10px;
-}
-
-.new-folder input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  outline: none;
-}
-
-.new-folder input:focus {
-  border-color: var(--accent);
-}
-
-.new-folder-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 7px;
-}
-
-.folder-list {
+.nav-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -151,7 +135,7 @@ body {
   gap: 2px;
 }
 
-.folder-item {
+.nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -169,26 +153,17 @@ body {
     color 0.15s;
 }
 
-.folder-item:hover {
+.nav-item:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
 
-.folder-item.active {
+.nav-item.active {
   background: var(--accent-soft);
   color: var(--text);
 }
 
-.folder-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  object-fit: cover;
-  background: var(--bg-hover);
-  flex-shrink: 0;
-}
-
-.folder-name {
+.nav-name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,7 +171,7 @@ body {
   font-weight: 500;
 }
 
-.folder-count {
+.nav-count {
   font-size: 11.5px;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
@@ -313,29 +288,64 @@ body {
   top: 8px;
   right: 8px;
   opacity: 0;
-  transition: opacity 0.15s;
+  /* Starts very slightly up and small, so it arrives rather than blinks on. */
+  transform: translateY(-2px) scale(0.92);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
-.card:hover .card-actions {
+.card:hover .card-actions,
+.card:focus-within .card-actions {
   opacity: 1;
+  transform: none;
 }
 
+/* A round chip: it sits on top of photographs of every colour, so it carries
+   its own dark frosted ground and a hairline edge to separate it from whatever
+   is underneath. The old version was dark grey on dark, and nearly invisible
+   over a dark image. */
 .card-delete {
+  display: grid;
+  place-items: center;
   width: 28px;
   height: 28px;
-  border: none;
-  border-radius: 7px;
-  background: rgba(14, 15, 19, 0.82);
-  backdrop-filter: blur(6px);
-  color: var(--text-dim);
-  font-size: 15px;
-  line-height: 1;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(18, 19, 25, 0.55);
+  backdrop-filter: blur(10px) saturate(1.2);
+  color: #fff;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease;
+}
+
+.card-delete svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
 }
 
 .card-delete:hover {
   background: var(--danger);
-  color: #fff;
+  border-color: var(--danger);
+  transform: scale(1.08);
+}
+
+.card-delete:active {
+  transform: scale(0.96);
+}
+
+.card-delete:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 /* ---------- Empty state ---------- */
@@ -377,7 +387,7 @@ body {
 .dropzone-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(246, 247, 249, 0.93);
+  background: rgba(244, 245, 247, 0.93);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -385,12 +395,14 @@ body {
   pointer-events: none;
 }
 
+/* Dropping gets the palette's teal rather than the usual blue: it is a
+   momentary state, and the colour shift makes it read instantly. */
 .dropzone-card {
-  border: 2px dashed var(--accent);
+  border: 2px dashed var(--brand-teal);
   border-radius: 18px;
   padding: 48px 68px;
   text-align: center;
-  background: var(--accent-soft);
+  background: var(--brand-tint);
 }
 
 .dropzone-icon {
@@ -398,7 +410,7 @@ body {
   height: 40px;
   margin: 0 auto 14px;
   border-radius: 10px;
-  background: var(--accent);
+  background: var(--brand-teal);
 }
 
 .dropzone-card p {
@@ -463,7 +475,7 @@ body {
 .lightbox {
   position: fixed;
   inset: 0;
-  background: rgba(22, 25, 33, 0.9);
+  background: rgba(24, 25, 32, 0.9);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -473,11 +485,37 @@ body {
   z-index: 60;
 }
 
+/* The stage takes the space the image used to, and clips it while zoomed so a
+   panned image never spills over the panel or the page behind. */
+.lightbox-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .lightbox img {
   max-width: 100%;
-  max-height: calc(100vh - 150px);
+  max-height: 100%;
   object-fit: contain;
   border-radius: var(--radius);
+  /* Zoom is a transform, so nothing reflows while zooming. */
+  transform-origin: center center;
+  cursor: zoom-in;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.lightbox img.zoomed {
+  cursor: grab;
+  border-radius: 0;
+}
+
+.lightbox img.zoomed:active {
+  cursor: grabbing;
 }
 
 .lightbox-bar {
@@ -521,10 +559,812 @@ body {
   padding: 11px 18px;
   font-size: 13px;
   z-index: 80;
-  box-shadow: 0 8px 26px rgba(20, 24, 38, 0.16);
+  box-shadow: 0 8px 26px rgba(20, 22, 30, 0.16);
 }
 
 .toast.error {
   border-color: var(--danger);
   color: #a8262b;
+}
+
+/* ---------- Sidebar: the all-images row ---------- */
+
+.all-item {
+  margin-bottom: 14px;
+}
+
+.all-glyph {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* ---------- Filter bar ---------- */
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+}
+
+.filter-row-end {
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.filter-label {
+  flex-shrink: 0;
+  /* Wide enough for "Folders" - the longest label in this column. */
+  width: 54px;
+  padding-right: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  --kind: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.chip.on {
+  background: color-mix(in srgb, var(--kind) 12%, transparent);
+  border-color: color-mix(in srgb, var(--kind) 45%, transparent);
+  color: var(--kind);
+}
+
+.chip-count {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+.search {
+  flex: 1;
+  max-width: 300px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.search:focus {
+  border-color: var(--accent);
+}
+
+/* ---------- Card badges ---------- */
+
+.badge {
+  --kind: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kind) 88%, transparent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+
+/* A guess the detector wasn't sure about wears a dashed outline, so a wrong
+   one is easy to spot and fix rather than quietly wrong forever. */
+.badge.unsure {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--kind);
+  border: 1px dashed color-mix(in srgb, var(--kind) 55%, transparent);
+  padding: 2px 7px;
+}
+
+.card-footer {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.card-tags {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.card:hover .card-tags {
+  opacity: 1;
+}
+
+.card-tags {
+  min-width: 0;
+}
+
+/* ---------- Lightbox panel ---------- */
+
+.lightbox-panel {
+  width: min(760px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.lightbox-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  overflow: hidden;
+}
+
+.lightbox-meta .dot {
+  opacity: 0.5;
+}
+
+.lightbox-meta span:first-child {
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lightbox-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field-grow {
+  flex: 1;
+}
+
+.field-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+}
+
+.tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.tag-editor:focus-within {
+  border-color: var(--accent);
+}
+
+.tag-chips {
+  display: contents;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-remove {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.tag-remove:hover {
+  background: var(--accent);
+  color: #fff;
+  opacity: 1;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 140px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 3px;
+  outline: none;
+}
+
+.lightbox-why {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.lightbox-why.unsure {
+  color: #a8681a;
+}
+
+/* ---------- Add-images dialog ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(24, 25, 32, 0.55);
+}
+
+.modal-card {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: 0 18px 50px rgba(20, 22, 30, 0.3);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.upload-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.upload-preview img {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-hover);
+}
+
+.preview-more {
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.modal-card .field {
+  gap: 6px;
+}
+
+.modal-note {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+/* ---------- Dropdowns and text inputs ----------
+
+   The native select is replaced wholesale: its own arrow is switched off and
+   drawn back as a background SVG, so the control matches the rest of the UI on
+   every platform instead of inheriting Windows' grey box. */
+
+.select,
+.text-input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background-color 0.15s;
+}
+
+.select {
+  /* Room on the right for the chevron, which is drawn as a background image. */
+  padding-right: 32px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23585b66' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+
+.select:hover,
+.text-input:hover {
+  border-color: var(--border-strong);
+}
+
+.select:focus,
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* The open list itself is drawn by the OS, so it only takes colours. */
+.select option {
+  background: var(--bg-raised);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.field-note {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-faint);
+}
+
+/* ---------- The suggestion hint ---------- */
+
+.hint-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  color: var(--text-dim);
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.hint-dot:hover,
+.hint-dot:focus-visible {
+  background: var(--accent);
+  color: #fff;
+  outline: none;
+}
+
+/* ---------- Sidebar type nav ---------- */
+
+/* The count sits right of the name, so the name takes the slack. */
+.nav-item .nav-count {
+  margin-left: auto;
+}
+
+/* ---------- Per-image type on the add dialog's thumbnails ---------- */
+
+.preview-item {
+  position: relative;
+  line-height: 0;
+}
+
+.preview-kind {
+  --kind: var(--text-faint);
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+
+/* ---------- Kind colours ----------
+
+   One hue per kind, so a wall of thumbnails can be scanned by type without
+   reading a single label. Anything carrying data-kind picks its colour up from
+   here - badges, filter chips, sidebar dots, upload previews - which is why
+   this block sits last: it must win over each component's own default.
+
+   The three brand colours go to the three kinds you see most; the rest stay
+   clearly apart from them and from each other. */
+
+[data-kind='mobile'] {
+  --kind: var(--brand-purple);
+}
+[data-kind='desktop'] {
+  --kind: var(--brand-blue);
+}
+[data-kind='dashboard'] {
+  /* The brand teal is too light to carry white badge text, so this is a
+     darkened version of it. */
+  --kind: #1a9e92;
+}
+[data-kind='ui'] {
+  --kind: #1f2a5b;
+}
+[data-kind='branding'] {
+  --kind: #d6249f;
+}
+[data-kind='print'] {
+  --kind: #b5741a;
+}
+[data-kind='illustration'] {
+  --kind: #3f8f43;
+}
+[data-kind='other'] {
+  --kind: #6c7384;
+}
+
+/* ---------- Sign in ----------
+
+   Only the hosted backend ever shows this. It covers the whole page rather
+   than sitting inside it: there is nothing to look at until you are in. */
+
+.signin {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.signin-card {
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 34px 28px 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card-hover);
+  text-align: center;
+}
+
+.signin-card h1 {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.signin-sub {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.signin-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.signin-note {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.signin-note.sent {
+  color: #1a9e92;
+  font-weight: 500;
+}
+
+.signin-note.error {
+  color: var(--danger);
+}
+
+/* ---------- Account ---------- */
+
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.account-email {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- People ---------- */
+
+.account-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.people-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.people-email {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-role {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.people-remove {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.people-remove:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.people-empty {
+  padding: 10px;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.invite-row {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-row .text-input {
+  flex: 1;
+}
+
+/* ---------- Nav icons ----------
+
+   Stroked rather than filled, so they sit quietly beside the labels instead of
+   competing with the thumbnails. The colour comes from the same --kind variable
+   the badges use, so a type looks the same everywhere. */
+
+/* In the sidebar the icons stay quiet and colour only to show which row you
+   are on: a wall of eight coloured glyphs competes with the thumbnails, one
+   does not. The badges on the cards still carry each type's own colour.
+
+   Stroke is set directly rather than through a custom property. Routing it via
+   var() and transitioning it left the computed stroke out of step with the
+   variable, so the colour did not always follow the selection. */
+.kind-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-item:hover .kind-icon {
+  stroke: var(--text-dim);
+}
+
+.nav-item.active .kind-icon {
+  stroke: var(--accent);
+}
+
+.nav-item.active .nav-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-item.active .nav-count {
+  color: var(--accent);
+}
+
+/* ---------- Zoom controls ---------- */
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding-left: 12px;
+  flex-shrink: 0;
+}
+
+.zoom-btn,
+.zoom-level {
+  height: 24px;
+  min-width: 24px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.zoom-level {
+  min-width: 48px;
+  font-variant-numeric: tabular-nums;
+}
+
+.zoom-btn:hover:not(:disabled),
+.zoom-level:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zoom-actual {
+  margin-left: 4px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+}
+
+/* ---------- Who added it ---------- */
+
+.card-by {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.card:hover .card-by {
+  opacity: 1;
+}
+
+#lightbox-by {
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

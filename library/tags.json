@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "images": {
+    "2026-09-18T13-44-56__joud brand identity.webp": {
+      "w": 1746,
+      "h": 2000,
+      "kind": "branding",
+      "auto": "branding",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "branding"
+      ]
+    },
+    "2026-09-18T13-44-56__noxtua brand identity.webp": {
+      "w": 1416,
+      "h": 2000,
+      "kind": "branding",
+      "auto": "branding",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "branding"
+      ]
+    },
+    "2026-09-18T13-44-56__flynhr attendance app screens.png": {
+      "w": 800,
+      "h": 600,
+      "kind": "mobile",
+      "auto": "mobile",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "mobile inspo"
+      ]
+    },
+    "2026-09-18T13-44-56__job search app screens.png": {
+      "w": 742,
+      "h": 554,
+      "kind": "mobile",
+      "auto": "mobile",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "mobile inspo"
+      ]
+    },
+    "2026-09-18T13-44-55__close deals features section.webp": {
+      "w": 2000,
+      "h": 1500,
+      "kind": "desktop",
+      "auto": "desktop",
+      "confidence": "low",
+      "why": "shallow landscape",
+      "tags": [
+        "web ui"
+      ]
+    },
+    "2026-09-18T13-44-55__hyperai add source modal.webp": {
+      "w": 2000,
+      "h": 1349,
+      "kind": "ui",
+      "auto": "ui",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "web ui"
+      ]
+    },
+    "2026-09-18T13-44-55__stratist feature cards.webp": {
+      "w": 2000,
+      "h": 1578,
+      "kind": "branding",
+      "auto": "ui",
+      "confidence": "high",
+      "why": "set by you",
+      "tags": [
+        "web ui"
+      ]
+    },
+    "2026-09-18T13-44-55__transactions list component.png": {
+      "w": 1091,
+      "h": 1200,
+      "kind": "ui",
+      "auto": "ui",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "web ui"
+      ]
+    },
+    "2026-09-18T14-13-36__image 6.png": {
+      "w": 913,
+      "h": 607,
+      "kind": "desktop",
+      "auto": "desktop",
+      "confidence": "low",
+      "why": "widescreen but small",
+      "tags": [
+        "rcs"
+      ]
+    },
+    "2026-09-21T07-24-15__boards companies table upgrade modal.jpg": {
+      "w": 4096,
+      "h": 3072,
+      "kind": "ui",
+      "auto": "ui",
+      "confidence": "high",
+      "why": "named in the filename",
+      "tags": [
+        "web ui"
+      ]
+    }
+  }
+}

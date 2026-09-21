@@ -1,78 +1,85 @@
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs');
-const fsp = require('fs/promises');
 const path = require('path');
 
+const config = require('./config');
+const { KINDS, KIND_IDS, classify } = require('./detect');
+const { normaliseTags } = require('./tagstore');
+const { LocalBackend, isImage } = require('./backends/local');
+
 const app = express();
-const PORT = process.env.PORT || 4300;
-const LIBRARY = path.join(__dirname, 'library');
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif', '.bmp']);
+// --- Which shelf are we using? ---------------------------------------------
 
-fs.mkdirSync(LIBRARY, { recursive: true });
+// The local backend is a single shared object: one folder, one tags.json, no
+// accounts. The hosted one is scoped to whichever library the person signing in
+// belongs to, so it is built per request instead.
+const local = config.backend === 'local' ? new LocalBackend(config.libraryDir) : null;
+
+let hosted = null;
+if (config.backend === 'supabase') {
+  hosted = require('./backends/supabase');
+}
 
 /**
- * Turns whatever the user typed into a safe folder name that can never escape
- * the library directory. Returns null if nothing usable is left.
+ * The backend for this request. Everything below talks to whatever this returns
+ * and never asks which it is.
  */
-function safeFolderName(raw) {
-  if (typeof raw !== 'string') return null;
-  const cleaned = raw
-    .normalize('NFKD')
-    .replace(/[\/:*?"<>|]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 60);
-  if (!cleaned || cleaned === '.' || cleaned === '..') return null;
-  return cleaned;
+function backendFor(req) {
+  if (!config.authRequired) return local;
+  return new hosted.SupabaseBackend(config.supabase, {
+    libraryId: req.membership.libraryId,
+    userId: req.user.id,
+  });
 }
 
-function folderPath(name) {
-  const safe = safeFolderName(name);
-  if (!safe) return null;
-  const full = path.join(LIBRARY, safe);
-  // Belt and braces: the resolved path must still sit inside the library.
-  if (path.dirname(full) !== LIBRARY) return null;
-  return full;
+/**
+ * Reads the Supabase access token the page sends and attaches whoever it
+ * belongs to. Never rejects on its own - the routes decide what needs a user,
+ * so that signing in and the health check stay reachable.
+ */
+async function identify(req, res, next) {
+  if (!config.authRequired) return next();
+  try {
+    const header = req.get('authorization') || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    req.user = await hosted.userFromToken(config.supabase, token);
+    // Signed in is not the same as allowed in: this is what decides which
+    // shared library they are part of, if any.
+    req.membership = req.user ? await hosted.resolveMembership(config.supabase, req.user) : null;
+  } catch (err) {
+    console.error('Could not work out membership:', err.message);
+    req.user = null;
+    req.membership = null;
+  }
+  next();
 }
 
-function isImage(file) {
-  return IMAGE_EXTENSIONS.has(path.extname(file).toLowerCase());
+function requireUser(req, res, next) {
+  if (!config.authRequired) return next();
+  if (!req.user) return res.status(401).json({ error: 'Please sign in.' });
+  if (!req.membership) {
+    return res.status(403).json({
+      error: 'You are signed in, but not a member of this library yet. Ask the owner to invite you.',
+    });
+  }
+  next();
 }
 
-async function listImages(dir) {
-  const entries = await fsp.readdir(dir, { withFileTypes: true });
-  const files = entries.filter((e) => e.isFile() && isImage(e.name));
-  const stats = await Promise.all(
-    files.map(async (e) => {
-      const s = await fsp.stat(path.join(dir, e.name));
-      return { name: e.name, size: s.size, addedAt: s.mtimeMs };
-    })
-  );
-  return stats.sort((a, b) => b.addedAt - a.addedAt);
+function requireOwner(req, res, next) {
+  if (!config.authRequired) return res.status(400).json({ error: 'Not a hosted library.' });
+  if (!req.membership || req.membership.role !== 'owner') {
+    return res.status(403).json({ error: 'Only an owner can do that.' });
+  }
+  next();
 }
 
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    const dir = folderPath(req.params.folder);
-    if (!dir) return cb(new Error('Invalid folder name'));
-    fs.mkdir(dir, { recursive: true }, (err) => cb(err, dir));
-  },
-  filename(req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase() || '.png';
-    const base = path
-      .basename(file.originalname, path.extname(file.originalname))
-      .replace(/[^a-zA-Z0-9-_ ]/g, '')
-      .trim()
-      .slice(0, 40) || 'inspiration';
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    cb(null, `${stamp}__${base}${ext}`);
-  },
-});
+// --- Uploads ---------------------------------------------------------------
 
+// Memory storage, because a backend may need the bytes rather than a path -
+// the hosted one streams them to Supabase and never touches a disk.
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024, files: 40 },
   fileFilter(req, file, cb) {
     cb(null, isImage(file.originalname) || file.mimetype.startsWith('image/'));
@@ -81,105 +88,202 @@ const upload = multer({
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/library', express.static(LIBRARY, { maxAge: '1h' }));
 
-// --- Folders ---------------------------------------------------------------
+// Local images are served straight off disk. The hosted backend hands out
+// signed URLs instead, so this route simply does not exist there.
+if (config.backend === 'local') {
+  app.use('/library', express.static(config.libraryDir, { maxAge: '1h' }));
+}
 
-app.get('/api/folders', async (req, res, next) => {
+app.use(identify);
+
+// --- Reference data --------------------------------------------------------
+
+/**
+ * Everything the page needs before it can draw anything: the list of types, and
+ * how to sign in when the library is hosted.
+ */
+app.get('/api/config', (req, res) => {
+  res.json({
+    kinds: KINDS,
+    backend: config.backend,
+    authRequired: config.authRequired,
+    // Safe to publish: row-level security is what protects the data, not this.
+    supabaseUrl: config.authRequired ? config.supabase.url : null,
+    supabaseAnonKey: config.authRequired ? config.supabase.anonKey : null,
+    signedIn: Boolean(req.user),
+    email: req.user ? req.user.email : null,
+    role: req.membership ? req.membership.role : null,
+    // Signed in but in no library: the page shows "ask to be invited".
+    member: Boolean(req.membership),
+  });
+});
+
+// --- People ----------------------------------------------------------------
+
+app.get('/api/people', requireUser, requireOwner, async (req, res, next) => {
   try {
-    const entries = await fsp.readdir(LIBRARY, { withFileTypes: true });
-    const folders = await Promise.all(
-      entries
-        .filter((e) => e.isDirectory())
-        .map(async (e) => {
-          const images = await listImages(path.join(LIBRARY, e.name));
-          return {
-            name: e.name,
-            count: images.length,
-            cover: images[0] ? `/library/${encodeURIComponent(e.name)}/${encodeURIComponent(images[0].name)}` : null,
-            updatedAt: images[0] ? images[0].addedAt : 0,
-          };
-        })
+    res.json({ people: await hosted.listPeople(config.supabase, req.membership.libraryId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/people', requireUser, requireOwner, async (req, res, next) => {
+  try {
+    const added = await hosted.invitePerson(
+      config.supabase,
+      req.membership.libraryId,
+      req.user.id,
+      (req.body || {}).email
     );
-    folders.sort((a, b) => a.name.localeCompare(b.name));
-    res.json({ folders, libraryPath: LIBRARY });
+    res.status(201).json(added);
   } catch (err) {
     next(err);
   }
 });
 
-app.post('/api/folders', async (req, res, next) => {
+app.delete('/api/people/:id', requireUser, requireOwner, async (req, res, next) => {
   try {
-    const name = safeFolderName(req.body && req.body.name);
-    if (!name) return res.status(400).json({ error: 'Please give the folder a name.' });
-    const dir = folderPath(name);
-    if (fs.existsSync(dir)) return res.status(409).json({ error: `"${name}" already exists.` });
-    await fsp.mkdir(dir, { recursive: true });
-    res.status(201).json({ name });
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.delete('/api/folders/:folder', async (req, res, next) => {
-  try {
-    const dir = folderPath(req.params.folder);
-    if (!dir || !fs.existsSync(dir)) return res.status(404).json({ error: 'Folder not found.' });
-    const images = await listImages(dir);
-    if (images.length > 0) {
-      return res.status(409).json({ error: 'Delete the images inside it first.' });
-    }
-    await fsp.rmdir(dir);
+    await hosted.removePerson(config.supabase, req.membership.libraryId, req.params.id);
     res.json({ ok: true });
   } catch (err) {
     next(err);
   }
 });
 
+// Kept so an older page still boots and can tell you to reload.
+app.get('/api/kinds', (req, res) => {
+  res.json({ kinds: KINDS });
+});
+
+/**
+ * What the detector WOULD say, without uploading anything. The add-images
+ * dialog uses this to show its suggestion before you commit, so the detector
+ * stays the single source of truth rather than being reimplemented in the page.
+ */
+app.post('/api/detect', (req, res) => {
+  const files = Array.isArray(req.body && req.body.files) ? req.body.files.slice(0, 40) : [];
+  res.json({
+    results: files.map((file) => {
+      const name = typeof file.name === 'string' ? file.name : '';
+      const width = Number(file.width) || 0;
+      const height = Number(file.height) || 0;
+      return { name, ...classify(name, width, height) };
+    }),
+  });
+});
+
 // --- Images ----------------------------------------------------------------
 
-app.get('/api/folders/:folder/images', async (req, res, next) => {
+app.get('/api/images', requireUser, async (req, res, next) => {
   try {
-    const dir = folderPath(req.params.folder);
-    if (!dir || !fs.existsSync(dir)) return res.status(404).json({ error: 'Folder not found.' });
-    const images = await listImages(dir);
+    const backend = backendFor(req);
+    const images = await backend.list();
     res.json({
-      images: images.map((img) => ({
-        ...img,
-        url: `/library/${encodeURIComponent(req.params.folder)}/${encodeURIComponent(img.name)}`,
-      })),
+      images,
+      facets: facetsFor(images),
+      libraryPath: config.backend === 'local' ? config.libraryDir : 'Supabase',
     });
   } catch (err) {
     next(err);
   }
 });
 
-app.post('/api/folders/:folder/images', upload.array('images', 40), (req, res) => {
-  const files = req.files || [];
-  if (files.length === 0) {
-    return res.status(400).json({ error: 'No images were uploaded. Only image files are accepted.' });
+app.post('/api/images', requireUser, upload.array('images', 40), async (req, res, next) => {
+  try {
+    const files = req.files || [];
+    if (files.length === 0) {
+      return res.status(400).json({ error: 'No images were uploaded. Only image files are accepted.' });
+    }
+
+    // Tags typed on the add-images dialog apply to everything in the batch,
+    // which is the whole point of tagging a drop of screenshots at once.
+    let tags = [];
+    try {
+      tags = normaliseTags(JSON.parse(req.body.tags || '[]'));
+    } catch {
+      tags = [];
+    }
+
+    // A type chosen on the dialog overrides the suggestion for the whole batch.
+    const kind = KIND_IDS.has(req.body.kind) ? req.body.kind : null;
+
+    const backend = backendFor(req);
+    const added = await backend.add(files, { tags, kind });
+    res.status(201).json({ added: added.length, images: added });
+  } catch (err) {
+    next(err);
   }
-  res.status(201).json({ added: files.length });
 });
 
-app.delete('/api/folders/:folder/images/:file', async (req, res, next) => {
+/**
+ * Changes the type, the tags, or both. Also accepts width/height from the
+ * browser for formats the server cannot measure - if the type has not been
+ * touched, those dimensions get it re-detected properly.
+ */
+app.patch('/api/images/:id', requireUser, async (req, res, next) => {
   try {
-    const dir = folderPath(req.params.folder);
-    const file = path.basename(req.params.file);
-    if (!dir || !isImage(file)) return res.status(400).json({ error: 'Invalid request.' });
-    const target = path.join(dir, file);
-    if (!fs.existsSync(target)) return res.status(404).json({ error: 'Image not found.' });
-    await fsp.unlink(target);
+    const body = req.body || {};
+    if (body.kind !== undefined && !KIND_IDS.has(body.kind)) {
+      return res.status(400).json({ error: 'Unknown kind.' });
+    }
+
+    const backend = backendFor(req);
+    const record = await backend.update(req.params.id, {
+      kind: body.kind,
+      tags: body.tags,
+      width: Number(body.width) || 0,
+      height: Number(body.height) || 0,
+    });
+    res.json(record);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/images/:id', requireUser, async (req, res, next) => {
+  try {
+    const backend = backendFor(req);
+    await backend.remove(req.params.id);
     res.json({ ok: true });
   } catch (err) {
     next(err);
   }
 });
 
+// --- Helpers ---------------------------------------------------------------
+
+/** Kind and tag counts, so the filters can show them. */
+function facetsFor(images) {
+  const kindCounts = new Map();
+  const tagCounts = new Map();
+
+  for (const image of images) {
+    kindCounts.set(image.kind, (kindCounts.get(image.kind) || 0) + 1);
+    for (const tag of image.tags) {
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+    }
+  }
+
+  return {
+    kinds: KINDS.filter((k) => kindCounts.has(k.id)).map((k) => ({
+      ...k,
+      count: kindCounts.get(k.id),
+    })),
+    tags: [...tagCounts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+  };
+}
+
+// Hosting platforms poll this to decide whether the app is alive.
+app.get('/healthz', (req, res) => res.json({ ok: true, backend: config.backend }));
+
 // --- Errors ----------------------------------------------------------------
 
 app.use((err, req, res, next) => {
-  const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 500;
+  const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
   const message =
     err.code === 'LIMIT_FILE_SIZE'
       ? 'That image is larger than the 25 MB limit.'
@@ -188,18 +292,48 @@ app.use((err, req, res, next) => {
   res.status(status).json({ error: message });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`\n  Design Inspiration is running`);
-  console.log(`  Open:    http://localhost:${PORT}`);
-  console.log(`  Images:  ${LIBRARY}\n`);
-});
+// --- Start -----------------------------------------------------------------
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`\n  Your inspiration library is ALREADY running in another window.`);
-    console.log(`  Nothing is broken - just open http://localhost:${PORT}\n`);
-    console.log(`  (To restart it instead, close the other window first.)\n`);
-    process.exit(0);
+async function start() {
+  if (local) {
+    const moved = await local.migrateFoldersToTags();
+    if (moved > 0) {
+      console.log(`  Moved ${moved} image(s) out of folders and tagged them instead.`);
+    }
+    const merged = await local.migrateSocialToBranding();
+    if (merged > 0) {
+      console.log(`  Moved ${merged} image(s) from Social into Brand & Social.`);
+    }
   }
-  throw err;
+
+  const server = app.listen(config.port, () => {
+    console.log(`\n  Design Inspiration is running`);
+    console.log(`  Open:    http://localhost:${config.port}`);
+    console.log(
+      config.backend === 'local'
+        ? `  Images:  ${config.libraryDir}\n`
+        : `  Images:  Supabase (${config.supabase.bucket})\n`
+    );
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`\n  Your inspiration library is ALREADY running in another window.`);
+      console.log(`  This window did NOT start a second copy, so you can close it.\n`);
+      console.log(`  To just use it:      open http://localhost:${config.port}`);
+      console.log(`  To RESTART it:       close the OTHER window first, then run this again.\n`);
+      // The older window keeps serving the old code while handing out the
+      // updated page from disk, which makes the site look broken. Anyone
+      // restarting on purpose is usually here for exactly that reason.
+      console.log(`  If the site says "Restart needed" or nothing loads, the other`);
+      console.log(`  window is an older version. Close it and start this one again.\n`);
+      process.exit(0);
+    }
+    throw err;
+  });
+}
+
+start().catch((err) => {
+  console.error('Could not start:', err);
+  process.exit(1);
 });

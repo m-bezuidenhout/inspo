@@ -13,47 +13,69 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Only ever shown by the hosted backend. Running on your own PC there is
+         nobody to sign in as, so this stays hidden and no account is needed. -->
+    <div class="signin" id="signin" hidden>
+      <div class="signin-card">
+        <div class="brand-mark"></div>
+        <h1>Inspiration</h1>
+        <p class="signin-sub">Sign in to reach your design library.</p>
+
+        <form id="signin-form">
+          <input
+            type="email"
+            id="signin-email"
+            class="text-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+          <button type="submit" class="btn btn-primary" id="signin-btn">Email me a link</button>
+        </form>
+
+        <p class="signin-note" id="signin-note">
+          We'll email you a sign-in link — there's no password to remember.
+        </p>
+      </div>
+    </div>
+
     <div class="app">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark"></div>
           <div>
             <h1>Inspiration</h1>
             <p class="brand-sub">Your design library</p>
           </div>
         </div>
 
-        <div class="folder-head">
-          <span>Folders</span>
-          <button class="icon-btn" id="new-folder-btn" title="New folder" aria-label="New folder">+</button>
-        </div>
+        <button class="nav-item all-item" id="all-item">
+          <span class="all-glyph" id="all-glyph"></span>
+          <span class="nav-name">All images</span>
+          <span class="nav-count" id="all-count">0</span>
+        </button>
 
-        <form class="new-folder" id="new-folder-form" hidden>
-          <input
-            type="text"
-            id="new-folder-input"
-            placeholder="Folder name"
-            maxlength="60"
-            autocomplete="off"
-          />
-          <div class="new-folder-actions">
-            <button type="submit" class="btn btn-primary btn-sm">Create</button>
-            <button type="button" class="btn btn-ghost btn-sm" id="cancel-folder-btn">Cancel</button>
-          </div>
-        </form>
+        <div class="nav-head"><span>Type</span></div>
 
-        <nav class="folder-list" id="folder-list"></nav>
+        <!-- The primary way around the library: what kind of thing it is. -->
+        <nav class="nav-list" id="kind-list"></nav>
 
         <div class="sidebar-foot">
-          <p class="path-label">Saved on your PC at</p>
+          <p class="path-label" id="path-label">Saved on your PC at</p>
           <p class="path-value" id="library-path" title="">…</p>
+          <div class="account" id="account" hidden>
+            <span class="account-email" id="account-email"></span>
+            <div class="account-actions">
+              <button class="btn btn-ghost btn-sm" id="people-btn" hidden>People</button>
+              <button class="btn btn-ghost btn-sm" id="signout-btn">Sign out</button>
+            </div>
+          </div>
         </div>
       </aside>
 
       <main class="main">
         <header class="main-head">
           <div>
-            <h2 id="current-folder">Choose a folder</h2>
+            <h2 id="view-title">All images</h2>
             <p class="count" id="image-count"></p>
           </div>
           <div class="head-actions">
@@ -62,11 +84,34 @@
           </div>
         </header>
 
+        <!-- Tags are the only grouping: type lives in the sidebar because it is
+             how you browse first, tags are how you pick out a set. -->
+        <div class="filters" id="filters" hidden>
+          <div class="filter-row" id="people-filter-row" hidden>
+            <span class="filter-label">Added by</span>
+            <div class="chips" id="people-chips"></div>
+          </div>
+          <div class="filter-row" id="tag-filter-row">
+            <span class="filter-label">Tags</span>
+            <div class="chips" id="tag-chips"></div>
+          </div>
+          <div class="filter-row filter-row-end">
+            <input
+              type="search"
+              id="search-input"
+              class="search"
+              placeholder="Search names and tags…"
+              autocomplete="off"
+            />
+            <button class="btn btn-ghost btn-sm" id="clear-filters" hidden>Clear filters</button>
+          </div>
+        </div>
+
         <section class="content" id="content">
           <div class="empty" id="empty-state">
             <div class="empty-art"></div>
             <h3>Nothing here yet</h3>
-            <p>Create a folder on the left to get started.</p>
+            <p>Drop some images anywhere on this page to get started.</p>
           </div>
           <div class="grid" id="grid" hidden></div>
         </section>
@@ -82,10 +127,137 @@
 
     <div class="lightbox" id="lightbox" hidden>
       <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
-      <img id="lightbox-img" alt="" />
-      <div class="lightbox-bar">
-        <span id="lightbox-name"></span>
-        <button class="btn btn-danger btn-sm" id="lightbox-delete">Delete</button>
+
+      <!-- The image sits in its own stage so it can be zoomed and panned
+           without the panel below moving with it. -->
+      <div class="lightbox-stage" id="lightbox-stage">
+        <img id="lightbox-img" alt="" draggable="false" />
+      </div>
+
+      <div class="lightbox-panel">
+        <div class="lightbox-meta">
+          <span id="lightbox-name"></span>
+          <span class="dot">·</span>
+          <span id="lightbox-dims"></span>
+          <span class="dot" id="lightbox-by-dot" hidden>·</span>
+          <span id="lightbox-by" hidden></span>
+
+          <div class="zoom" id="zoom-controls">
+            <button class="zoom-btn" id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+            <button class="zoom-level" id="zoom-level" title="Reset to fit">100%</button>
+            <button class="zoom-btn" id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+            <button class="zoom-btn zoom-actual" id="zoom-actual" title="Actual size">1:1</button>
+          </div>
+        </div>
+
+        <div class="lightbox-controls">
+          <label class="field">
+            <span class="field-label">Type</span>
+            <select id="kind-select" class="select"></select>
+          </label>
+
+          <div class="field field-grow">
+            <span class="field-label">Tags</span>
+            <div class="tag-editor" id="tag-editor">
+              <div class="tag-chips" id="lightbox-tags"></div>
+              <input
+                type="text"
+                id="tag-input"
+                class="tag-input"
+                placeholder="Add a tag, then Enter"
+                maxlength="24"
+                autocomplete="off"
+                list="tag-suggestions"
+              />
+              <datalist id="tag-suggestions"></datalist>
+            </div>
+          </div>
+
+          <button class="btn btn-danger btn-sm" id="lightbox-delete">Delete</button>
+        </div>
+
+        <p class="lightbox-why" id="lightbox-why"></p>
+      </div>
+    </div>
+
+    <!-- Shown before an upload whenever the destination needs choosing, so
+         images can be filed and tagged on the way in rather than afterwards. -->
+    <div class="modal" id="upload-modal" hidden>
+      <div class="modal-card">
+        <h3 class="modal-title" id="upload-title">Add images</h3>
+
+        <div class="upload-preview" id="upload-preview"></div>
+
+        <label class="field">
+          <span class="field-label">
+            Type
+            <span
+              class="hint-dot"
+              id="upload-kind-hint"
+              tabindex="0"
+              role="button"
+              aria-label="About this suggestion"
+              >?</span
+            >
+          </span>
+          <select id="upload-kind" class="select"></select>
+          <span class="field-note" id="upload-kind-note"></span>
+        </label>
+
+        <div class="field">
+          <span class="field-label">Tags for all of them</span>
+          <div class="tag-editor">
+            <div class="tag-chips" id="upload-tag-chips"></div>
+            <input
+              type="text"
+              id="upload-tag-input"
+              class="tag-input"
+              placeholder="Add a tag, then Enter"
+              maxlength="24"
+              autocomplete="off"
+              list="tag-suggestions"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="upload-cancel">Cancel</button>
+          <button class="btn btn-primary" id="upload-confirm">Add images</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owners only: everyone who shares this library. -->
+    <div class="modal" id="people-modal" hidden>
+      <div class="modal-card">
+        <h3 class="modal-title">People in this library</h3>
+        <p class="modal-note">
+          Everyone here sees the same images and tags, and can add to them.
+        </p>
+
+        <ul class="people-list" id="people-list"></ul>
+
+        <form class="field" id="invite-form">
+          <span class="field-label">Invite someone</span>
+          <div class="invite-row">
+            <input
+              type="email"
+              id="invite-email"
+              class="text-input"
+              placeholder="them@example.com"
+              autocomplete="off"
+              required
+            />
+            <button type="submit" class="btn btn-primary">Invite</button>
+          </div>
+          <span class="field-note">
+            They also need a Supabase account — invite them under Authentication → Users.
+          </span>
+        </form>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="people-close">Done</button>
+        </div>
       </div>
     </div>
 
